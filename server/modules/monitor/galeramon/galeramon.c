@@ -95,16 +95,16 @@ MXS_MODULE* MXS_CREATE_MODULE()
             {"use_priority", MXS_MODULE_PARAM_BOOL, "false"},
             {
                 "script",
-                 MXS_MODULE_PARAM_PATH,
-                 NULL,
-                 MXS_MODULE_OPT_PATH_X_OK
+                MXS_MODULE_PARAM_PATH,
+                NULL,
+                MXS_MODULE_OPT_PATH_X_OK
             },
             {
                 "events",
-                 MXS_MODULE_PARAM_ENUM,
-                 MONITOR_EVENT_DEFAULT_VALUE,
-                 MXS_MODULE_OPT_NONE,
-                 monitor_event_enum_values
+                MXS_MODULE_PARAM_ENUM,
+                MONITOR_EVENT_DEFAULT_VALUE,
+                MXS_MODULE_OPT_NONE,
+                monitor_event_enum_values
             },
             {"set_donor_nodes", MXS_MODULE_PARAM_BOOL, "false"},
             {MXS_END_MODULE_PARAMS}
@@ -546,7 +546,7 @@ monitorMain(void *arg)
          */
         if (handle->set_donor_nodes)
         {
-           update_sst_donor_nodes(mon, is_cluster);
+            update_sst_donor_nodes(mon, is_cluster);
         }
 
         release_monitor_servers(mon);
@@ -729,8 +729,8 @@ static void update_sst_donor_nodes(MONITOR *mon, int is_cluster)
                 while ((row = mysql_fetch_row(result)))
                 {
                     MXS_DEBUG("wsrep_node_name name for %s is [%s]",
-                            ptr->server->unique_name,
-                            row[1]);
+                              ptr->server->unique_name,
+                              row[1]);
 
                     strncat(donor_list, row[1], DONOR_NODE_NAME_MAX_LEN);
                     strcat(donor_list, ",");
@@ -758,7 +758,7 @@ static void update_sst_donor_nodes(MONITOR *mon, int is_cluster)
     strcat(donor_list, "\"");
 
     MXS_DEBUG("Sending %s to all slave nodes",
-               donor_list);
+              donor_list);
 
     /* Set now rep_sst_donor in each slave node */
     ptr = mon->databases;
@@ -776,8 +776,8 @@ static void update_sst_donor_nodes(MONITOR *mon, int is_cluster)
             else
             {
                 MXS_ERROR("SET GLOBAL rep_sst_donor error in node %s: %s",
-                           ptr->server->unique_name,
-                           mysql_error(ptr->con));
+                          ptr->server->unique_name,
+                          mysql_error(ptr->con));
             }
         }
 
