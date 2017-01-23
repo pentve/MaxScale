@@ -486,6 +486,7 @@ writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
         session->counters.deleteQuery);
     fflush(session->fp);
 
+    resetCounters(session);
     session->timestamp = now;
 }
 

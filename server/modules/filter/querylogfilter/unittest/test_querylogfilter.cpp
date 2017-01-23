@@ -137,12 +137,19 @@ TEST_F(LSTests, TestLogWrite)
     resetCounters(&session);
     session.timestamp = (unsigned long) time(NULL);
     session.fp = fopen(mTestLogName.c_str(), "w");
+    updateCounters(&session, "select * from test;");
     writeLogIfNeeded(&session, 0);
+    unsigned long t1 = session.timestamp;
+    writeLogIfNeeded(&session, 0);
+    unsigned long t2 = session.timestamp;
     fclose(session.fp);
-    char t_str[1024];
-    getTimestampAsDateTime(session.timestamp, t_str, sizeof(t_str));
-    std::string expected_content = std::string(t_str) + "," + std::string(t_str) + ",0,0,0,0\n";
-    AssertFileContent(mTestLogName, expected_content);
+    char t1_str[1024], t2_str[1024];
+    getTimestampAsDateTime(t1, t1_str, sizeof(t1_str));
+    getTimestampAsDateTime(t2, t2_str, sizeof(t2_str));
+    std::string expected_line1 = std::string(t1_str) + "," + std::string(t1_str) + ",1,0,0,0\n";
+    std::string expected_line2 = std::string(t2_str) + "," + std::string(t2_str) + ",0,0,0,0\n";
+    std::string expectedContent = expected_line1 + expected_line2;
+    AssertFileContent(mTestLogName, expectedContent);
 }
 
 TEST_F(LSTests, TestParseParameters_ok)
