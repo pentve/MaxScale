@@ -44,13 +44,13 @@ MODULE_INFO info =
     "Query logger/statistics"
 };
 
-static char *version_str = "V0.9.0";
+static char* version_str = "V0.9.0";
 
 /**
  * The filter entry points
  */
-static FILTER *createInstance(char**, FILTER_PARAMETER**);
-static void *newSession(FILTER*, SESSION*);
+static FILTER* createInstance(char**, FILTER_PARAMETER**);
+static void* newSession(FILTER*, SESSION*);
 static void closeSession(FILTER*, void*);
 static void freeSession(FILTER*, void*);
 static void setDownstream(FILTER*, void*, DOWNSTREAM*);
@@ -72,10 +72,10 @@ static FILTER_OBJECT MyObject =
 
 typedef struct
 {
-    unsigned int select;
-    unsigned int insert;
-    unsigned int update;
-    unsigned int delete;
+    unsigned int selectQuery;
+    unsigned int insertQuery;
+    unsigned int updateQuery;
+    unsigned int deleteQuery;
 } QueryCounters;
 
 typedef struct
@@ -123,6 +123,7 @@ void writeLogIfNeeded(LS_SESSION*, unsigned long);
 int passQueryDownstream(LS_SESSION*, GWBUF*);
 void updateCounters(LS_SESSION*, char*);
 void resetCounters(LS_SESSION*);
+void bindCounters(LS_SESSION*);
 
 /**
  * The mandatory version entry point
@@ -180,7 +181,7 @@ createInstance(char** options, FILTER_PARAMETER** params)
         return (FILTER*) NULL;
     }
 
-    if ((instance = malloc(sizeof(LS_INSTANCE))) == NULL)
+    if ((instance = (LS_INSTANCE*) malloc(sizeof(LS_INSTANCE))) == NULL)
     {
         return (FILTER*) NULL;
     }
@@ -225,7 +226,7 @@ newSession(FILTER* instance_in, SESSION* session_in)
     LS_INSTANCE* instance = (LS_INSTANCE*) instance_in;
     LS_SESSION* session;
 
-    if ((session = calloc(1, sizeof(LS_SESSION))) == NULL)
+    if ((session = (LS_SESSION*) calloc(1, sizeof(LS_SESSION))) == NULL)
     {
         return NULL;
     }
@@ -253,11 +254,7 @@ newSession(FILTER* instance_in, SESSION* session_in)
 
     fprintf(session->fp, "LogStart,LogEnd,SelectCount,InsertCount,UpdateCount,DeleteCount\n");
     fflush(session->fp); /* writing to disk by 'loggingInterval' shouldn't be too much */
-
-    session->counterBind[0] = (CounterBinding) { .counter = &session->counters.select, .queryType = "select" };
-    session->counterBind[1] = (CounterBinding) { .counter = &session->counters.insert, .queryType = "insert" };
-    session->counterBind[2] = (CounterBinding) { .counter = &session->counters.update, .queryType = "update" };
-    session->counterBind[3] = (CounterBinding) { .counter = &session->counters.delete, .queryType = "delete" };
+    bindCounters(session);
     session->timestamp = (unsigned long) time(NULL);
     resetCounters(session);
     return session;
@@ -470,10 +467,10 @@ void writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
     fprintf(session->fp, "%s,%s,%u,%u,%u,%u\n",
         start_str,
         now_str,
-        session->counters.select,
-        session->counters.insert,
-        session->counters.update,
-        session->counters.delete);
+        session->counters.selectQuery,
+        session->counters.insertQuery,
+        session->counters.updateQuery,
+        session->counters.deleteQuery);
     fflush(session->fp);
 
     session->timestamp = now;
@@ -523,4 +520,18 @@ void updateCounters(LS_SESSION* session, char* queryStr)
 void resetCounters(LS_SESSION* session)
 {
     memset(&session->counters, 0, sizeof(session->counters));
+}
+
+/**
+ * Bind counter types to variables
+ *
+ * @param session   Session context
+ *
+*/
+void bindCounters(LS_SESSION* session)
+{
+    session->counterBind[0] = (CounterBinding) { .counter = &session->counters.selectQuery, .queryType = "select" };
+    session->counterBind[1] = (CounterBinding) { .counter = &session->counters.insertQuery, .queryType = "insert" };
+    session->counterBind[2] = (CounterBinding) { .counter = &session->counters.updateQuery, .queryType = "update" };
+    session->counterBind[3] = (CounterBinding) { .counter = &session->counters.deleteQuery, .queryType = "delete" };
 }
