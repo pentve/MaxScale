@@ -465,7 +465,7 @@ void writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
     unsigned long now = (unsigned long) time(NULL);
 
     /* log if the interval has passed or the clock has jumped */
-    bool should_log = now > session->timestamp + loggingInterval || session->timestamp > now;
+    bool should_log = now >= session->timestamp + loggingInterval || session->timestamp > now;
     if (!should_log)
     {
         return;
