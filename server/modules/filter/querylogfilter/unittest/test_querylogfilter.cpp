@@ -169,9 +169,9 @@ TEST_F(LSTests, TestNewInstance)
 {
     FILTER_PARAMETER** p = GetParameters((char*) mTestLogName.c_str(), "1");
     LS_INSTANCE* i = (LS_INSTANCE*) createInstance(NULL, p);
-    unsigned int start_time = (unsigned int) time(NULL);
+    unsigned long start_time = (unsigned long) time(NULL);
     LS_SESSION* s = (LS_SESSION*) newSession((void**) i, NULL);
-    unsigned int end_time = (unsigned int) time(NULL);
+    unsigned long end_time = (unsigned long) time(NULL);
     ASSERT_STREQ(std::string(mTestLogName + ".0").c_str(), s->filename);
     ASSERT_GE(start_time, s->timestamp);
     ASSERT_LE(end_time, s->timestamp);

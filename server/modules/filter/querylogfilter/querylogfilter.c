@@ -81,7 +81,7 @@ typedef struct
 typedef struct
 {
     unsigned int* counter;
-    char*         queryType;
+    const char*   queryType;
 } CounterBinding;
 
 /**
@@ -112,19 +112,19 @@ typedef enum { param_text, param_number, param_natural_number } ParamType;
 
 typedef struct
 {
-    void**    var;
-    ParamType type;
-    char*     name;
-    bool      mandatory;
+    void**      var;
+    ParamType   type;
+    const char* name;
+    bool        mandatory;
 } KnownParam;
 
-bool parseParameters(FILTER_PARAMETER**, const KnownParam[], unsigned int, const char*);
-void getTimestampAsDateTime(unsigned int, char*, const unsigned int);
-void writeLogIfNeeded(LS_SESSION*, unsigned long);
-int passQueryDownstream(LS_SESSION*, GWBUF*);
-void updateCounters(LS_SESSION*, char*);
-void resetCounters(LS_SESSION*);
-void bindCounters(LS_SESSION*);
+static bool parseParameters(FILTER_PARAMETER**, const KnownParam[], unsigned int, const char*);
+static void getTimestampAsDateTime(unsigned int, char*, const unsigned int);
+static void writeLogIfNeeded(LS_SESSION*, unsigned long);
+static int passQueryDownstream(LS_SESSION*, GWBUF*);
+static void updateCounters(LS_SESSION*, const char*);
+static void resetCounters(LS_SESSION*);
+static void bindCounters(LS_SESSION*);
 
 /**
  * The mandatory version entry point
@@ -175,6 +175,7 @@ GetModuleObject()
 static FILTER*
 createInstance(char** options, FILTER_PARAMETER** params)
 {
+    (void) options;
     LS_INSTANCE* instance;
 
     if (params == NULL)
@@ -190,6 +191,7 @@ createInstance(char** options, FILTER_PARAMETER** params)
     instance->filebase = NULL;
     instance->loggingInterval = 60; /* default 1 minute */
     instance->myName = strdup(basename(__FILE__));
+    instance->sessions = 0;
 
     const KnownParam known_params[] =
     {
@@ -197,8 +199,8 @@ createInstance(char** options, FILTER_PARAMETER** params)
         { .var = (void**) &instance->loggingInterval, .type = param_natural_number, .name = "interval", .mandatory = false }
     };
 
-    unsigned int known_param_count = sizeof(known_params)/sizeof(known_params[0]);
-    bool parse_ok = parseParameters(params, known_params, known_param_count, instance->myName);
+    const bool parse_ok = parseParameters(params, known_params,
+        sizeof(known_params) / sizeof(known_params[0]), instance->myName);
     if (!parse_ok)
     {
         free(instance->filebase);
@@ -207,7 +209,6 @@ createInstance(char** options, FILTER_PARAMETER** params)
         return (FILTER*) NULL;
     }
 
-    instance->sessions = 0;
     return (FILTER*) instance;
 }
 
@@ -271,6 +272,8 @@ newSession(FILTER* instance_in, SESSION* session_in)
 static void
 closeSession(FILTER* instance_in, void *session_in)
 {
+    (void) instance_in;
+
     LS_SESSION* session = (LS_SESSION*) session_in;
     if (session->fp)
     {
@@ -337,7 +340,7 @@ routeQuery(FILTER* instance_in, void* session_in, GWBUF* queue)
     }
 
     trim(squeeze_whitespace(query_str));
-    updateCounters(session, query_str);
+    updateCounters(session, (const char*) query_str);
     writeLogIfNeeded(session, instance->loggingInterval);
     free(query_str);
 
@@ -382,19 +385,16 @@ diagnostic(FILTER* instance_in, void* session_in, DCB* dcb)
  * 
  * @return successful or not
 */
-bool parseParameters(FILTER_PARAMETER** params, const KnownParam knownParams[], unsigned int knownParamCount, const char* myName)
+static bool
+parseParameters(FILTER_PARAMETER** params, const KnownParam knownParams[], unsigned int knownParamCount, const char* myName)
 {
-    FILTER_PARAMETER* input_param;
-    const KnownParam* known_param;
-    bool found;
-
     for (unsigned int known_param_idx = 0; known_param_idx < knownParamCount; ++known_param_idx)
     {
-        found = false;
-        known_param = &knownParams[known_param_idx];
+        bool found = false;
+        const KnownParam* known_param = &knownParams[known_param_idx];
         for (unsigned int input_param_idx = 0; params[input_param_idx]; ++input_param_idx)
         {
-            input_param = params[input_param_idx];
+            FILTER_PARAMETER* input_param = params[input_param_idx];
             if (!strcmp(input_param->name, known_param->name))
             {
                 if (known_param->type == param_text)
@@ -444,7 +444,8 @@ bool parseParameters(FILTER_PARAMETER** params, const KnownParam knownParams[], 
  * @param bufferSize     size of buffer in bytes
  *
 */
-void getTimestampAsDateTime(unsigned int ts, char* buffer, const unsigned int bufferSize)
+static void
+getTimestampAsDateTime(unsigned int ts, char* buffer, const unsigned int bufferSize)
 {
     time_t t = ts;
     struct tm tm;
@@ -460,7 +461,8 @@ void getTimestampAsDateTime(unsigned int ts, char* buffer, const unsigned int bu
  * @param loggingInterval  How often the log is written (seconds)
  *
 */
-void writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
+static void
+writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
 {
     unsigned long now = (unsigned long) time(NULL);
 
@@ -494,7 +496,8 @@ void writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
  * @param queue     Query data
  * 
 */
-int passQueryDownstream(LS_SESSION* session, GWBUF* queue)
+static int
+passQueryDownstream(LS_SESSION* session, GWBUF* queue)
 {
     return session->down.routeQuery(session->down.instance, session->down.session, queue);
 }
@@ -506,10 +509,11 @@ int passQueryDownstream(LS_SESSION* session, GWBUF* queue)
  * @param queryStr  Query as string
  * 
 */
-void updateCounters(LS_SESSION* session, char* queryStr)
+static void
+updateCounters(LS_SESSION* session, const char* queryStr)
 {
     CounterBinding counterBind;
-    unsigned int queryTypeMax = sizeof(session->counterBind)/sizeof(session->counterBind[0]);
+    const unsigned int queryTypeMax = sizeof(session->counterBind) / sizeof(session->counterBind[0]);
 
     for (unsigned int counter_idx = 0; counter_idx < queryTypeMax; ++counter_idx)
     {
@@ -528,7 +532,8 @@ void updateCounters(LS_SESSION* session, char* queryStr)
  * @param session   Session context
  * 
 */
-void resetCounters(LS_SESSION* session)
+static void
+resetCounters(LS_SESSION* session)
 {
     memset(&session->counters, 0, sizeof(session->counters));
 }
@@ -539,7 +544,8 @@ void resetCounters(LS_SESSION* session)
  * @param session   Session context
  *
 */
-void bindCounters(LS_SESSION* session)
+static void
+bindCounters(LS_SESSION* session)
 {
     session->counterBind[0] = (CounterBinding) { .counter = &session->counters.selectQuery, .queryType = "select" };
     session->counterBind[1] = (CounterBinding) { .counter = &session->counters.insertQuery, .queryType = "insert" };
