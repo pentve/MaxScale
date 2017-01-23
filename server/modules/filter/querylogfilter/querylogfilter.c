@@ -119,6 +119,7 @@ typedef struct
 } KnownParam;
 
 bool parseParameters(FILTER_PARAMETER**, const KnownParam[], unsigned int, const char*);
+void getTimestampAsDateTime(unsigned int, char*, const unsigned int);
 void writeLogIfNeeded(LS_SESSION*, unsigned long);
 int passQueryDownstream(LS_SESSION*, GWBUF*);
 void updateCounters(LS_SESSION*, char*);
@@ -436,19 +437,31 @@ bool parseParameters(FILTER_PARAMETER** params, const KnownParam knownParams[], 
 }
 
 /**
+ * Writes date/time corresponding unix timestamp 'ts' to 'buffer'
+ *
+ * @param ts             unix timestamp
+ * @param buffer         output string buffer
+ * @param bufferSize     size of buffer in bytes
+ *
+*/
+void getTimestampAsDateTime(unsigned int ts, char* buffer, const unsigned int bufferSize)
+{
+    time_t t = ts;
+    struct tm tm;
+    localtime_r(&t, &tm);
+    strftime(buffer, bufferSize, "%F %T", &tm);
+}
+
+/**
  * Writes the statistics/counter log, if 'loggingInterval' (seconds)
  * have elapsed since the last logging.
- * 
+ *
  * @param session          Session context
  * @param loggingInterval  How often the log is written (seconds)
- * 
+ *
 */
 void writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
 {
-    time_t time_t_start, time_t_now;
-    struct tm tm_start, tm_now;
-    char start_str[1024], now_str[1024];
-
     unsigned long now = (unsigned long) time(NULL);
 
     /* log if the interval has passed or the clock has jumped */
@@ -458,12 +471,10 @@ void writeLogIfNeeded(LS_SESSION* session, unsigned long loggingInterval)
         return;
     }
 
-    time_t_now = now;
-    time_t_start = session->timestamp;
-    localtime_r(&time_t_now, &tm_now);
-    localtime_r(&time_t_start, &tm_start);
-    strftime(start_str, sizeof(start_str), "%F %T", &tm_start);
-    strftime(now_str, sizeof(now_str), "%F %T", &tm_now);
+    char start_str[1024], now_str[1024];
+    getTimestampAsDateTime(session->timestamp, start_str, sizeof(start_str));
+    getTimestampAsDateTime(now, now_str, sizeof(now_str));
+
     fprintf(session->fp, "%s,%s,%u,%u,%u,%u\n",
         start_str,
         now_str,
